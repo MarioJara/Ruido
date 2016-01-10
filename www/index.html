@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Device Properties Example</title>
+
+    <script type="text/javascript" charset="utf-8" src="cordova.js"></script>
+    <script type="text/javascript" charset="utf-8" src="js/wavesurfer.min.js"></script>
+    <script type="text/javascript" charset="utf-8">
+        
+        //var srcFile = "myrecording.amr";
+        var srcFile = "myrecording.mp3";
+        
+        var my_media = null;
+        var mediaTimer = null;
+        var mediaRec = null;
+        var recInterval = null;
+        var ctx = null;
+
+    // Wait for device API libraries to load
+    //
+    document.addEventListener("deviceready", onDeviceReady, false);
+
+    // Record audio
+    //
+    function recordAudio(src) {
+        mediaRec = new Media(src, onRecSuccess, onRecError);
+
+        // Record audio
+        mediaRec.startRecord();
+
+        // Stop recording after 10 sec
+        var recTime = 0;
+        recInterval = setInterval(function() {
+            recTime = recTime + 1;
+            setAudioPosition(recTime + " sec");
+            if (recTime >= 10) {
+                stopRecording();
+            }
+        }, 1000);
+    }
+    
+    function stopRecording() {
+        clearInterval(recInterval);
+        mediaRec.stopRecord();
+        mediaRec = null;
+        setAudioPosition("Recording finished");
+        navigator.geolocation.getCurrentPosition(
+            function(position) {
+                setAudioPosition("Recording finished. Recorded at: " + position.coords.latitude + "," + position.coords.longitude);
+            },
+            function() {
+                alert('Error getting location');
+            });
+    }
+
+    // device APIs are available
+    //
+    function onDeviceReady() {
+        //recordAudio();
+    }
+
+    // onSuccess Callback
+    //
+    function onRecSuccess(mediaFiles) {
+        console.log("recordAudio():Audio Success");
+        
+        var i, path, len = mediaFiles.length;
+        var wavesurfer = Object.create(WaveSurfer);
+        var options = {
+            container     : document.getElementById('wave'),
+            waveColor     : 'violet',
+            progressColor : 'orange',
+            loaderColor   : 'orange',
+            cursorColor   : 'navy',
+            markerWidth   : 2
+        };
+        wavesurfer.init(options);
+        
+        for (i = 0; i < len; i += 1) {
+            path = mediaFiles[i].fullPath;
+            alert(path)
+            // do something interesting with the file
+            wavesurfer.load(path);
+        }
+              
+        wavesurfer.on('error', function (err) {
+            console.error(err);
+        });
+    }
+
+    // onError Callback
+    //
+    function onRecError(error) {
+        alert('code: '    + error.code    + '\n' +
+              'message: ' + error.message + '\n');
+    }
+    
+    function playAudio(src) {
+            if (my_media == null) {
+                // Create Media object from src
+                my_media = new Media(src, onSuccess, onError);
+            } // else play current audio
+            // Play audio
+            my_media.play();
+
+            // Update my_media position every second
+            if (mediaTimer == null) {
+                mediaTimer = setInterval(function() {
+                    // get my_media position
+                    my_media.getCurrentPosition(
+                        // success callback
+                        function(position) {
+                            if (position > -0) {
+                                setAudioPosition((position) + " sec");
+                            } else {
+                                setAudioPosition("");
+                                stopAudio();
+                            }
+                        },
+                        // error callback
+                        function(e) {
+                            console.log("Error getting pos=" + e);
+                            setAudioPosition("Error: " + e);
+                        }
+                    );
+                }, 1000);
+            }
+        }
+
+        // Pause audio
+        //
+        function pauseAudio() {
+            if (my_media) {
+                my_media.pause();
+            }
+        }
+
+        // Stop audio
+        //
+        function stopAudio() {
+            if (my_media) {
+                my_media.stop();
+            }
+            clearInterval(mediaTimer);
+            mediaTimer = null;
+            my_media = null;
+        }
+
+        // onSuccess Callback
+        //
+        function onSuccess() {
+            console.log("playAudio():Audio Success");
+        }
+
+        // onError Callback
+        //
+        function onError(error) {
+            alert('code: '    + error.code    + '\n' +
+                  'message: ' + error.message + '\n');
+        }
+
+    // Set audio position
+    //
+    function setAudioPosition(position) {
+        document.getElementById('audio_position').innerHTML = position;
+    }
+
+    </script>
+  </head>
+  <body>
+    <button class="btn large" onclick="recordAudio(srcFile);">Record Audio - 10 sec</button><br />
+    <div id="recording">
+        <button class="btn large" onclick="stopRecording();">Stop Recording Audio</button><br />
+    </div>
+    <div id="play">
+        <button class="btn large" onclick="playAudio(srcFile);">Play Audio</button><br />
+        <!--<button class="btn large" onclick="pauseAudio();">Pause Playing Audio</button><br />-->
+        <button class="btn large" onclick="stopAudio();">Stop Playing Audio</button><br />
+    </div>
+    <p id="media"></p>
+    <p id="audio_position"></p>
+    <div id="wave"></div>
+  </body>
+</html>
